@@ -9,6 +9,8 @@ _cache
 hakyll/site
 .ghc.environment.*
 result
+**/Set[1-5].hs
+
 
 **/*.cabal
 **/.stack-work/
