@@ -7,6 +7,9 @@ solutions
 _site
 _cache
 hakyll/site
-src/Set[1-5].hs
 .ghc.environment.*
 result
+
+**/*.cabal
+**/.stack-work/
+**/.DS_Store
