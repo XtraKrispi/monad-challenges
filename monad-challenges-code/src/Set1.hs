@@ -5,8 +5,19 @@
 module Set1 where
 
 import MCPrelude
+import Set4
 
-type Gen a = Seed -> (a, Seed)
+newtype Gen a = Gen {runGen :: Seed -> (a, Seed)}
+
+evalGen :: Gen a -> Seed -> a
+evalGen gen = fst . runGen gen
+
+instance Monad Gen where
+    return a = Gen $ \s -> (a, s)
+    bind (Gen sa) fn = Gen $ \s ->
+        let (a, s') = sa s
+            Gen sb = fn a
+         in sb s'
 
 fiveRands :: [Integer]
 fiveRands =
@@ -17,64 +28,39 @@ fiveRands =
         (i5, _) = rand s'''
      in [i1, i2, i3, i4, i5]
 
+randGen :: Gen Integer
+randGen = Gen rand
+
 randLetter :: Gen Char
-randLetter s =
+randLetter = Gen $ \s ->
     let (i, s') = rand s
      in (toLetter i, s')
 
 randString3 :: String
-randString3 =
-    let (c1, s) = randLetter (mkSeed 1)
-        (c2, s') = randLetter s
-        (c3, s'') = randLetter s'
-     in [c1, c2, c3]
+randString3 = evalGen (liftM3 (\a b c -> [a, b, c]) randLetter randLetter randLetter) $ mkSeed 1
 
 generalA :: (a -> b) -> Gen a -> Gen b
-generalA fn ga s =
+generalA fn (Gen ga) = Gen $ \s ->
     let (a, s') = ga s
      in (fn a, s')
 
 randEven :: Gen Integer
-randEven = generalA (* 2) rand
+randEven = generalA (* 2) randGen
 
 randOdd :: Gen Integer
 randOdd = generalA (+ 1) randEven
 
 rand10 :: Gen Integer
-rand10 = generalA (* 10) rand
+rand10 = generalA (* 10) (Gen rand)
 
 randPair :: Gen (Char, Integer)
-randPair s =
-    let (c, s') = randLetter s
-     in generalA (c,) rand s'
+randPair = bind randLetter $ \c -> bind randGen $ \i -> return (c, i)
 
 generalPair :: Gen a -> Gen b -> Gen (a, b)
-generalPair ga gb s =
-    let (a, s') = ga s
-     in generalA (a,) gb s'
+generalPair ga gb = bind ga $ \a -> bind gb $ \b -> return (a, b)
 
 randPair_ :: Gen (Char, Integer)
-randPair_ = generalPair randLetter rand
-
-generalB :: (a -> b -> c) -> Gen a -> Gen b -> Gen c
-generalB fn ga gb s =
-    let (a, s') = ga s
-     in generalA (fn a) gb s'
+randPair_ = generalPair randLetter randGen
 
 generalPair2 :: Gen a -> Gen b -> Gen (a, b)
-generalPair2 = generalB (,)
-
-repRandom :: [Gen a] -> Gen [a]
-repRandom xs s =
-    foldl
-        (\(xs', s') ga -> generalA (\x -> xs' ++ [x]) ga s')
-        ([], s)
-        xs
-
-genTwo :: Gen a -> (a -> Gen b) -> Gen b
-genTwo ga fn s =
-    let (a, s') = ga s
-     in fn a s'
-
-mkGen :: a -> Gen a
-mkGen = (,)
+generalPair2 = liftM2 (,)

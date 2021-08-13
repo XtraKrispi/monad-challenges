@@ -4,8 +4,14 @@
 module Set2 where
 
 import MCPrelude
+import Set4
 
 data Maybe a = Nothing | Just a
+
+instance Monad Maybe where
+    return = Just
+    bind Nothing _ = Nothing
+    bind (Just a) fn = fn a
 
 instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
@@ -57,30 +63,21 @@ queryGreek d key = case lookupMay key d of
             Just n -> divMay (fromIntegral n) (fromIntegral h)
         _ -> Nothing
 
-chain :: (a -> Maybe b) -> Maybe a -> Maybe b
-chain fn ma =
-    case ma of
-        Nothing -> Nothing
-        Just a -> fn a
-
-link :: Maybe a -> (a -> Maybe b) -> Maybe b
-link = flip chain
-
 queryGreek2 :: GreekData -> String -> Maybe Double
 queryGreek2 d key =
-    link (lookupMay key d) $
-        \ns -> link (tailMay ns) $
-            \is -> link (headMay ns) $
-                \h -> link (maximumMay is) $
+    bind (lookupMay key d) $
+        \ns -> bind (tailMay ns) $
+            \is -> bind (headMay ns) $
+                \h -> bind (maximumMay is) $
                     \n -> divMay (fromIntegral n) (fromIntegral h)
 
 addSalaries :: [(String, Integer)] -> String -> String -> Maybe Integer
 addSalaries d key1 key2 =
-    link (lookupMay key1 d) $ \v1 -> link (lookupMay key2 d) $ \v2 -> mkMaybe $ v1 + v2
+    bind (lookupMay key1 d) $ \v1 -> bind (lookupMay key2 d) $ \v2 -> mkMaybe $ v1 + v2
 
 yLink :: (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
 yLink fn ma mb =
-    link ma $ \a -> link mb $ \b -> mkMaybe $ fn a b
+    bind ma $ \a -> bind mb $ \b -> mkMaybe $ fn a b
 
 addSalaries2 :: [(String, Integer)] -> String -> String -> Maybe Integer
 addSalaries2 d key1 key2 = yLink (+) (lookupMay key1 d) (lookupMay key2 d)
